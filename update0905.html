@@ -872,7 +872,7 @@
       gasSheetUrl: activeSheetObj.sheetUrl,
       units: (function() {
         let u = JSON.parse(localStorage.getItem("farm_units") || JSON.stringify({
-          "把": 3.0, "斤": 0.6, "kg": 1.0, "包": 0.3, "袋": 5.0, "籃": 12.0
+          "kg": 1.0,"把": 3.0, "斤": 0.6, "包": 0.3, "袋": 5.0, "籃": 12.0
         }));
         if (u && u["把"] === 0.25) { 
           u["把"] = 3.0; 
