@@ -238,7 +238,7 @@
                 <th class="p-3">入庫日期</th>
                 <th class="p-3">冷藏預估期限</th>
                 <th class="p-3">剩餘公斤數</th>
-                <th class="p-3">在庫天數</th>
+                <th class="p-3">已在庫天數</th>
                 <th class="p-3">狀態預警</th>
                 <th class="p-3">操作</th>
               </tr>
@@ -843,7 +843,7 @@
       return cleanDateStr(val);
     }
 
-    const FIXED_UNIT_ORDER = ["把", "斤", "kg", "包", "袋", "籃"];
+    const FIXED_UNIT_ORDER = ["kg","把", "斤",  "包", "袋", "籃"];
 
     const DEFAULT_GAS_SHEETS = [
       {
