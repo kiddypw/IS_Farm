@@ -133,7 +133,7 @@
       <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 rounded-xl p-4 border border-emerald-200 shadow-sm">
         <div class="flex items-center justify-between mb-2">
           <h3 class="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-            <span>❄️ 各蔬菜冷藏預估耐放天數對照表 (入庫自動計算冷藏期限)</span>
+            <span>❄️ 各蔬菜冷藏預估耐放天數對照表 (入庫自動計算純冷藏日期)</span>
           </h3>
           <span class="text-xs text-emerald-700 font-medium">系統依此天數嚴格檢核可出貨量</span>
         </div>
@@ -198,7 +198,7 @@
           <h3 class="font-bold text-emerald-900 flex items-center gap-2">
             <span>🥬 目前各蔬菜可出貨數量統計</span>
           </h3>
-          <span class="text-xs text-emerald-700 font-medium">（已依蔬菜專屬天數自動扣除逾期數量）</span>
+          <span class="text-xs text-emerald-700 font-medium">（已依蔬菜耐放天數自動扣除逾期數量）</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
@@ -294,7 +294,7 @@
 
           <!-- Schedule Dates Preview -->
           <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-            <h4 class="text-xs font-bold text-emerald-900 uppercase tracking-wider mb-2">🗓️ 自動推理日程 (冷藏預估期限依「採收2+冷藏耐放天數」推算)</h4>
+            <h4 class="text-xs font-bold text-emerald-900 uppercase tracking-wider mb-2">🗓️ 自動推理日程 (僅記錄純日期，依「採收2+冷藏耐放天數」推算)</h4>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
               <div>
                 <label class="block text-xs text-slate-600">追肥日</label>
@@ -341,7 +341,7 @@
           </div>
 
           <button type="submit" id="saveFieldBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-sm flex items-center gap-2 active:scale-95">
-            <span>💾 儲存並同步至 Google 試算表</span>
+            <span>💾 儲存並同步至 Google 試算表 (純日期)</span>
           </button>
         </form>
       </div>
@@ -414,7 +414,7 @@
 
             <div>
               <div class="flex justify-between items-center mb-1">
-                <label class="block text-xs font-semibold text-slate-600">冷藏預估期限</label>
+                <label class="block text-xs font-semibold text-slate-600">冷藏預估期限 (純日期)</label>
                 <span id="rawColdDaysBadge" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">耐放 14 天</span>
               </div>
               <input type="date" id="rawExpiryDate" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-semibold text-emerald-800 outline-none">
@@ -436,7 +436,7 @@
           </div>
 
           <button type="submit" id="saveRawBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-sm flex items-center gap-2 active:scale-95">
-            <span>❄️ 建立入庫並同步至 Google 試算表</span>
+            <span>❄️ 建立入庫並同步至 Google 試算表 (純日期)</span>
           </button>
         </form>
       </div>
@@ -546,7 +546,7 @@
           </div>
 
           <button type="submit" id="saveShipBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-sm flex items-center gap-2 active:scale-95">
-            <span>🚀 確定出貨並同步至 Google 試算表</span>
+            <span>🚀 確定出貨並同步至 Google 試算表 (純日期)</span>
           </button>
         </form>
       </div>
@@ -798,38 +798,27 @@
       "莧菜":   { fert: 5, pest1: 8, pest2: 15, h1: 25, h2: 32, coldDays: 14, expiry: 46 }
     };
 
-    // 統一日期時間格式化函式：格式為 yyyy/m/d hh:mm
-    function formatDateTime(val) {
+    // 統一純日期格式化函式：僅輸出 yyyy/m/d，完全捨棄時分秒
+    function formatDate(val) {
       if (!val) return '-';
       if (val instanceof Date) {
         if (isNaN(val.getTime())) return '-';
         const yyyy = val.getFullYear();
         const m = val.getMonth() + 1;
         const d = val.getDate();
-        const hh = String(val.getHours()).padStart(2, '0');
-        const mm = String(val.getMinutes()).padStart(2, '0');
-        return `${yyyy}/${m}/${d} ${hh}:${mm}`;
+        return `${yyyy}/${m}/${d}`;
       }
 
       const str = String(val).trim();
       if (!str) return '-';
 
-      const dateOnlyMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-      if (dateOnlyMatch) {
-        const yyyy = dateOnlyMatch[1];
-        const m = parseInt(dateOnlyMatch[2], 10);
-        const d = parseInt(dateOnlyMatch[3], 10);
-        return `${yyyy}/${m}/${d} 00:00`;
-      }
-
-      const dateTimeMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})[ T](\d{1,2}):(\d{1,2})(:\d{1,2})?$/);
-      if (dateTimeMatch) {
-        const yyyy = dateTimeMatch[1];
-        const m = parseInt(dateTimeMatch[2], 10);
-        const d = parseInt(dateTimeMatch[3], 10);
-        const hh = String(dateTimeMatch[4]).padStart(2, '0');
-        const mm = String(dateTimeMatch[5]).padStart(2, '0');
-        return `${yyyy}/${m}/${d} ${hh}:${mm}`;
+      // 若字串開頭包含 YYYY-MM-DD 或 YYYY/MM/DD
+      const match = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (match) {
+        const yyyy = match[1];
+        const m = parseInt(match[2], 10);
+        const d = parseInt(match[3], 10);
+        return `${yyyy}/${m}/${d}`;
       }
 
       const parsed = new Date(str.replace(/-/g, '/'));
@@ -837,29 +826,22 @@
         const yyyy = parsed.getFullYear();
         const m = parsed.getMonth() + 1;
         const d = parsed.getDate();
-        const hh = String(parsed.getHours()).padStart(2, '0');
-        const mm = String(parsed.getMinutes()).padStart(2, '0');
-        return `${yyyy}/${m}/${d} ${hh}:${mm}`;
+        return `${yyyy}/${m}/${d}`;
       }
 
       return str;
     }
 
-    // 表單送出時自動附加當前時分
-    function attachCurrentTime(dateStr) {
-      if (!dateStr) return '';
-      if (dateStr.includes(' ') || dateStr.includes('T')) return dateStr;
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      return `${dateStr} ${hh}:${mm}`;
+    // 取得乾淨的純日期字串 (yyyy/m/d)
+    function cleanDateStr(val) {
+      if (!val) return '';
+      const formatted = formatDate(val);
+      return formatted === '-' ? '' : formatted;
     }
 
-    // 取得種植日期關鍵字 (YYYY/M/D) 以作為唯一批次標記
+    // 取得種植日期標籤 (YYYY/M/D) 以作為唯一批次標記
     function getPlantDateKey(val) {
-      if (!val) return '';
-      const formatted = formatDateTime(val);
-      return formatted.split(' ')[0];
+      return cleanDateStr(val);
     }
 
     // 預設固定單位順序：1. 把、2. 斤、3. kg、4. 包、5. 袋、6. 籃
@@ -991,43 +973,54 @@
     window.handleGasResponse = function(json) {
       setLoadingUI(false);
       if (json && json.status === "success") {
-        // 正規化 FieldRecords 欄位，相容中英文鍵名
+        // 正規化 FieldRecords 欄位，統一過濾為純日期格式
         state.fields = (json.fields || []).map(f => ({
           ...f,
           id: f.id || f["田區/地塊編號"] || f["田區"] || "",
           vegType: f.vegType || f["蔬菜種類"] || f["品項"] || "",
-          plantDate: f.plantDate || f["種植/播種日期"] || f["種植日"] || "",
-          fertDate: f.fertDate || f["追肥日"] || "",
-          pest1Date: f.pest1Date || f["用藥一"] || f["用藥1"] || "",
-          pest2Date: f.pest2Date || f["用藥二"] || f["用藥2"] || "",
-          harvest1Date: f.harvest1Date || f["採收一 (預估)"] || f["採收1日期"] || "",
+          plantDate: cleanDateStr(f.plantDate || f["種植/播種日期"] || f["種植日"] || ""),
+          fertDate: cleanDateStr(f.fertDate || f["追肥日"] || ""),
+          pest1Date: cleanDateStr(f.pest1Date || f["用藥一"] || f["用藥1"] || ""),
+          pest2Date: cleanDateStr(f.pest2Date || f["用藥二"] || f["用藥2"] || ""),
+          harvest1Date: cleanDateStr(f.harvest1Date || f["採收一 (預估)"] || f["採收1日期"] || ""),
           harvest1Kg: parseFloat(f.harvest1Kg !== undefined ? f.harvest1Kg : (f["第 1 次實際採收數量 (kg)"] || f["採收1"] || 0)),
-          harvest2Date: f.harvest2Date || f["採收二 (預估)"] || f["採收2日期"] || "",
+          harvest2Date: cleanDateStr(f.harvest2Date || f["採收二 (預估)"] || f["採收2日期"] || ""),
           harvest2Kg: parseFloat(f.harvest2Kg !== undefined ? f.harvest2Kg : (f["第 2 次實際採收數量 (kg)"] || f["採收2"] || 0)),
-          expiryDate: f.expiryDate || f["冷藏預估期限"] || f["冷藏期限"] || "",
+          expiryDate: cleanDateStr(f.expiryDate || f["冷藏預估期限"] || f["冷藏期限"] || ""),
           notes: f.notes || f["備註/田間紀錄說明"] || f["備註"] || ""
         }));
 
-        // 正規化 RawInbound 欄位，確保冷藏預估期限與其他欄位能讀取中文名稱
+        // 正規化 RawInbound 欄位，統一過濾為純日期格式
         state.rawInbound = (json.rawInbound || []).map(r => ({
           ...r,
           rawLotNo: r.rawLotNo || r["原料批號"] || "",
           vegType: r.vegType || r["蔬菜種類"] || r["品項"] || "",
           source: r.source || r["田區來源"] || "",
-          inDate: r.inDate || r["入庫日期"] || "",
-          expiryDate: r.expiryDate || r["冷藏預估期限"] || r["冷藏期限"] || "",
+          inDate: cleanDateStr(r.inDate || r["入庫日期"] || ""),
+          expiryDate: cleanDateStr(r.expiryDate || r["冷藏預估期限"] || r["冷藏期限"] || ""),
           weightKg: parseFloat(r.weightKg !== undefined ? r.weightKg : (r["入庫毛重/淨重 (kg)"] || r["原始重量"] || r["重量"] || r["入庫重量"] || 0)),
           storageLoc: r.storageLoc || r["冷藏庫儲位"] || r["儲位"] || ""
         }));
 
-        state.shipping = json.shipping || [];
+        // 正規化 Shipping 欄位，過濾為純日期格式
+        state.shipping = (json.shipping || []).map(s => ({
+          ...s,
+          shipNo: s.shipNo || s["出貨單號"] || "",
+          shipDate: cleanDateStr(s.shipDate || s["出貨日期"] || ""),
+          customer: s.customer || s["客戶/通路"] || "",
+          temp: s.temp || s["溫層與配送"] || "",
+          logistics: s.logistics || s["物流資訊"] || "",
+          totalKg: parseFloat(s.totalKg !== undefined ? s.totalKg : (s["總出貨重量 (kg)"] || 0)),
+          summaryText: s.summaryText || s["出貨明細摘要"] || "",
+          items: s.items || s["明細資料JSON"] || []
+        }));
 
         renderAll();
         
         const bannerText = document.getElementById("syncBannerText");
         if (bannerText) {
-          const syncTime = json.timestamp ? formatDateTime(json.timestamp) : formatDateTime(new Date());
-          bannerText.innerText = `✅ 試算表同步完成 (最後更新時間：${syncTime})`;
+          const syncDate = formatDate(new Date());
+          bannerText.innerText = `✅ 試算表同步完成 (同步日期：${syncDate})`;
         }
 
         if (window._showUserAlert) {
@@ -1173,10 +1166,13 @@
 
     function addDaysToDate(dateStr, days) {
       if (!dateStr || days === null || days === undefined) return "";
-      const d = new Date(dateStr);
+      const d = new Date(dateStr.replace(/-/g, '/'));
       if (isNaN(d.getTime())) return "";
       d.setDate(d.getDate() + days);
-      return d.toISOString().split('T')[0];
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     }
 
     function autoFillSchedule() {
@@ -1191,13 +1187,13 @@
       document.getElementById("fieldPest2Date").value = addDaysToDate(plantDate, rule.pest2);
       document.getElementById("fieldHarvest1Date").value = addDaysToDate(plantDate, rule.h1);
       document.getElementById("fieldHarvest2Date").value = addDaysToDate(plantDate, rule.h2);
-      // 冷藏預估期限依第 2 次採收日期加上該品項專屬冷藏預估天數
+      // 純日期冷藏預估期限：依第 2 次採收日期加上該品項專屬耐放天數
       const h2Date = addDaysToDate(plantDate, rule.h2);
       const coldDays = COLD_STORAGE_DAYS[veg] || rule.coldDays || 14;
       document.getElementById("fieldExpiryDate").value = addDaysToDate(h2Date, coldDays);
     }
 
-    // 採收入庫表單：依據蔬菜種類與入庫日期，自動推算冷藏預估期限
+    // 採收入庫表單：純日期自動推算冷藏預估期限
     function autoFillRawExpiry() {
       const veg = document.getElementById("rawVegType") ? document.getElementById("rawVegType").value : "小白菜";
       const inDate = document.getElementById("rawInDate") ? document.getElementById("rawInDate").value : "";
@@ -1234,30 +1230,30 @@
 
     function getDaysInStorage(inDateStr) {
       if (!inDateStr) return 0;
-      const inDate = new Date(inDateStr);
+      const inDate = new Date(inDateStr.replace(/-/g, '/'));
       if (isNaN(inDate.getTime())) return 0;
       const today = new Date();
-      const diffTime = Math.abs(today - inDate);
-      return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      // 將時間歸零比較純天數
+      inDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      const diffTime = today - inDate;
+      return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
     }
 
-    // 取得批號的冷藏預估期限：嚴格套用各品項冷藏天數與入庫日期
+    // 取得批號的冷藏預估純日期
     function getRawExpiryDate(r) {
       if (!r) return null;
 
-      // 1. 若該原料入庫時已有明確記錄的冷藏期限 (同時支援中英文屬性名)
       const directExpiry = r.expiryDate || r["冷藏預估期限"] || r["冷藏期限"];
-      if (directExpiry) return directExpiry;
+      if (directExpiry) return cleanDateStr(directExpiry);
 
-      // 2. 核心邏輯：入庫日期 (inDate) + 該蔬菜專屬冷藏天數
       const inDate = r.inDate || r["入庫日期"];
       const vegType = r.vegType || r["品項"] || r["蔬菜種類"];
       if (inDate && vegType && COLD_STORAGE_DAYS[vegType]) {
         const dStr = String(inDate).trim().split(' ')[0];
-        return addDaysToDate(dStr, COLD_STORAGE_DAYS[vegType]);
+        return cleanDateStr(addDaysToDate(dStr, COLD_STORAGE_DAYS[vegType]));
       }
 
-      // 3. 對照田間紀錄 (FieldRecords) 備援
       if (state.fields && state.fields.length > 0) {
         const matchedField = state.fields.find(f => {
           const fId = f.id || f["田區/地塊編號"] || f["田區"];
@@ -1273,24 +1269,21 @@
         });
 
         if (matchedField && (matchedField.expiryDate || matchedField["冷藏預估期限"])) {
-          return matchedField.expiryDate || matchedField["冷藏預估期限"];
+          return cleanDateStr(matchedField.expiryDate || matchedField["冷藏預估期限"]);
         }
       }
 
       return null;
     }
 
-    // 判斷批號是否已超過冷藏預估期限
+    // 判斷批號是否已超過冷藏預估期限 (純日期比較：當日 23:59:59 前皆屬有效)
     function isRawExpired(r) {
       const expStr = getRawExpiryDate(r);
       if (!expStr) return false;
       let expDate = new Date(expStr.replace(/-/g, '/'));
       if (isNaN(expDate.getTime())) return false;
       
-      // 若字串無時間或為 00:00，展延至當日最後一秒 (23:59:59)
-      if (!expStr.includes(':') || expStr.includes('00:00')) {
-        expDate.setHours(23, 59, 59, 999);
-      }
+      expDate.setHours(23, 59, 59, 999);
       return new Date() > expDate;
     }
 
@@ -1311,15 +1304,15 @@
     function saveFieldRecord() {
       const fieldId = document.getElementById("fieldId").value;
       const vegType = document.getElementById("fieldVegType").value;
-      const plantDate = attachCurrentTime(document.getElementById("fieldPlantDate").value);
-      const fertDate = attachCurrentTime(document.getElementById("fieldFertDate").value);
-      const pest1Date = attachCurrentTime(document.getElementById("fieldPest1Date").value);
-      const pest2Date = attachCurrentTime(document.getElementById("fieldPest2Date").value);
-      const harvest1Date = attachCurrentTime(document.getElementById("fieldHarvest1Date").value);
+      const plantDate = cleanDateStr(document.getElementById("fieldPlantDate").value);
+      const fertDate = cleanDateStr(document.getElementById("fieldFertDate").value);
+      const pest1Date = cleanDateStr(document.getElementById("fieldPest1Date").value);
+      const pest2Date = cleanDateStr(document.getElementById("fieldPest2Date").value);
+      const harvest1Date = cleanDateStr(document.getElementById("fieldHarvest1Date").value);
       const harvest1Kg = parseFloat(document.getElementById("fieldHarvest1Kg").value) || 0;
-      const harvest2Date = attachCurrentTime(document.getElementById("fieldHarvest2Date").value);
+      const harvest2Date = cleanDateStr(document.getElementById("fieldHarvest2Date").value);
       const harvest2Kg = parseFloat(document.getElementById("fieldHarvest2Kg").value) || 0;
-      const expiryDate = attachCurrentTime(document.getElementById("fieldExpiryDate").value);
+      const expiryDate = cleanDateStr(document.getElementById("fieldExpiryDate").value);
       const notes = document.getElementById("fieldNotes").value;
 
       const record = {
@@ -1335,7 +1328,7 @@
         harvest2Kg: harvest2Kg,
         expiryDate: expiryDate,
         notes: notes,
-        // 中文欄位映射
+        // 中文欄位映射 (全純日期)
         "田區/地塊編號": fieldId,
         "田區": fieldId,
         "蔬菜種類": vegType,
@@ -1362,7 +1355,7 @@
       };
 
       syncDataToGasAndRefresh("FieldRecords", record);
-      showToast("✅ 已送出田間紀錄至 Google 試算表！", "success");
+      showToast("✅ 已送出田間紀錄至 Google 試算表 (純日期)！", "success");
     }
 
     function transferHarvestToInbound(fieldIndex, harvestIndex) {
@@ -1407,10 +1400,8 @@
       const weightInput = document.getElementById("rawWeightKg");
       if (weightInput) weightInput.value = harvestKg;
 
-      // 自動依採收日期及蔬菜種類計算冷藏預估期限
       autoFillRawExpiry();
 
-      // 確保冷藏預估期限欄位確實已設定
       const rawExpInput = document.getElementById("rawExpiryDate");
       if (rawExpInput && !rawExpInput.value) {
         const coldDays = COLD_STORAGE_DAYS[field.vegType] || 14;
@@ -1428,22 +1419,21 @@
       const veg = document.getElementById("rawVegType").value;
       let expDateRaw = document.getElementById("rawExpiryDate").value;
 
-      // 若使用者未點選或預估期限為空，自動推算補齊
       if (!expDateRaw && inDateRaw) {
         const coldDays = COLD_STORAGE_DAYS[veg] || 14;
         expDateRaw = addDaysToDate(inDateRaw, coldDays);
         document.getElementById("rawExpiryDate").value = expDateRaw;
       }
 
-      const formattedInDate = attachCurrentTime(inDateRaw);
-      const formattedExpiryDate = attachCurrentTime(expDateRaw);
+      // 儲存為純日期格式 (YYYY/M/D)
+      const formattedInDate = cleanDateStr(inDateRaw);
+      const formattedExpiryDate = cleanDateStr(expDateRaw);
       const lotNo = document.getElementById("rawLotNo").value;
       const source = document.getElementById("rawSource").value;
       const weight = parseFloat(document.getElementById("rawWeightKg").value) || 0;
       const loc = document.getElementById("rawStorageLoc").value;
 
       const raw = {
-        // 英文鍵名
         rawLotNo: lotNo,
         vegType: veg,
         source: source,
@@ -1451,7 +1441,7 @@
         expiryDate: formattedExpiryDate,
         weightKg: weight,
         storageLoc: loc,
-        // 中文欄位名（確保 Google Apps Script 能直接對應工作表「冷藏預估期限」等欄位）
+        // 中文欄位名 (純日期)
         "原料批號": lotNo,
         "蔬菜種類": veg,
         "品項": veg,
@@ -1469,7 +1459,7 @@
 
       syncDataToGasAndRefresh("RawInbound", raw);
       generateNewRawLotNo();
-      showToast("✅ 已建立採收入庫資料並送往 Google 試算表！", "success");
+      showToast("✅ 已建立採收入庫資料並送往 Google 試算表 (純日期)！", "success");
     }
 
     function addShippingItemRow() {
@@ -1529,12 +1519,19 @@
 
       const ship = {
         shipNo: document.getElementById("shipNo").value,
-        shipDate: attachCurrentTime(document.getElementById("shipDate").value),
+        shipDate: cleanDateStr(document.getElementById("shipDate").value), // 純日期
         customer: document.getElementById("shipCustomer").value,
         temp: document.getElementById("shipTemp").value,
         logistics: document.getElementById("shipLogistics").value,
         totalKg: parseFloat(totalKg.toFixed(2)),
-        items: [...shippingItemsState]
+        items: [...shippingItemsState],
+        "出貨單號": document.getElementById("shipNo").value,
+        "出貨日期": cleanDateStr(document.getElementById("shipDate").value),
+        "客戶/通路": document.getElementById("shipCustomer").value,
+        "溫層與配送": document.getElementById("shipTemp").value,
+        "物流資訊": document.getElementById("shipLogistics").value,
+        "總出貨重量 (kg)": parseFloat(totalKg.toFixed(2)),
+        "明細資料JSON": JSON.stringify(shippingItemsState)
       };
 
       syncDataToGasAndRefresh("Shipping", ship);
@@ -1542,7 +1539,7 @@
       shippingItemsState = [];
       generateNewShipNo();
       renderShippingItemsTable();
-      showToast("🚀 出貨單已送出並寫入 Google 試算表！", "success");
+      showToast("🚀 出貨單已送出並寫入 Google 試算表 (純日期)！", "success");
     }
 
     function saveChannel() {
@@ -1871,8 +1868,8 @@
             <td class="p-3 font-mono font-semibold">${r.rawLotNo}</td>
             <td class="p-3 font-medium">${r.vegType || ''}</td>
             <td class="p-3 text-slate-500">${r.source || ''}</td>
-            <td class="p-3 text-slate-500">${formatDateTime(r.inDate)}</td>
-            <td class="p-3 text-slate-600 font-semibold">${expiryStr ? formatDateTime(expiryStr) : '-'}</td>
+            <td class="p-3 text-slate-500">${formatDate(r.inDate)}</td>
+            <td class="p-3 text-slate-600 font-semibold">${expiryStr ? formatDate(expiryStr) : '-'}</td>
             <td class="p-3 font-bold text-emerald-600">${remKg.toFixed(1)} kg</td>
             <td class="p-3 font-bold">${days} 天</td>
             <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">${statusText}</span></td>
@@ -1923,14 +1920,14 @@
           ? `<button type="button" onclick="transferHarvestToInbound(${idx}, 2)" class="text-xs badge-pink px-2.5 py-1 rounded-md font-bold transition shadow-sm w-full text-center" title="點擊可重新載入此資料至採收入庫">已轉入 (採2)</button>`
           : `<button type="button" onclick="transferHarvestToInbound(${idx}, 2)" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2.5 py-1 rounded-md font-medium transition w-full text-center">轉入 (採2)</button>`;
 
-        const plantText = f.plantDate ? `種植: ${formatDateTime(f.plantDate)}` : `種植: -`;
-        const fertText = f.fertDate ? `追肥: ${formatDateTime(f.fertDate)}` : `追肥: -`;
+        const plantText = f.plantDate ? `種植: ${formatDate(f.plantDate)}` : `種植: -`;
+        const fertText = f.fertDate ? `追肥: ${formatDate(f.fertDate)}` : `追肥: -`;
 
-        const pest1Text = f.pest1Date ? `用藥1: ${formatDateTime(f.pest1Date)}` : `用藥1: -`;
-        const pest2Text = f.pest2Date ? `用藥2: ${formatDateTime(f.pest2Date)}` : `用藥2: -`;
+        const pest1Text = f.pest1Date ? `用藥1: ${formatDate(f.pest1Date)}` : `用藥1: -`;
+        const pest2Text = f.pest2Date ? `用藥2: ${formatDate(f.pest2Date)}` : `用藥2: -`;
 
-        const harvest1Text = (f.harvest1Kg || f.harvest1Kg === 0) ? `採收1: <span class="font-bold text-slate-800">${f.harvest1Kg} kg</span> <span class="text-xs text-slate-400">(${formatDateTime(f.harvest1Date)})</span>` : `採收1: -`;
-        const harvest2Text = (f.harvest2Kg || f.harvest2Kg === 0) ? `採收2: <span class="font-bold text-slate-800">${f.harvest2Kg} kg</span> <span class="text-xs text-slate-400">(${formatDateTime(f.harvest2Date)})</span>` : `採收2: -`;
+        const harvest1Text = (f.harvest1Kg || f.harvest1Kg === 0) ? `採收1: <span class="font-bold text-slate-800">${f.harvest1Kg} kg</span> <span class="text-xs text-slate-400">(${formatDate(f.harvest1Date)})</span>` : `採收1: -`;
+        const harvest2Text = (f.harvest2Kg || f.harvest2Kg === 0) ? `採收2: <span class="font-bold text-slate-800">${f.harvest2Kg} kg</span> <span class="text-xs text-slate-400">(${formatDate(f.harvest2Date)})</span>` : `採收2: -`;
 
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50">
@@ -1948,7 +1945,7 @@
               <div class="py-0.5">${harvest1Text}</div>
               <div class="py-0.5 border-t border-slate-100 text-slate-500">${harvest2Text}</div>
             </td>
-            <td class="p-3 text-slate-500">${formatDateTime(f.expiryDate)}</td>
+            <td class="p-3 text-slate-500">${formatDate(f.expiryDate)}</td>
             <td class="p-3 space-y-1 min-w-[110px]">
               ${btn1}
               ${btn2}
@@ -1985,8 +1982,8 @@
             <td class="p-3 font-mono font-bold text-slate-800">${r.rawLotNo || ''}</td>
             <td class="p-3 font-medium">${r.vegType || ''}</td>
             <td class="p-3 text-slate-500">${r.source || ''}</td>
-            <td class="p-3 text-slate-500">${formatDateTime(r.inDate)}</td>
-            <td class="p-3 text-xs font-semibold ${isExpired ? 'text-rose-600' : 'text-slate-600'}">${expiryStr ? formatDateTime(expiryStr) : '-'}</td>
+            <td class="p-3 text-slate-500">${formatDate(r.inDate)}</td>
+            <td class="p-3 text-xs font-semibold ${isExpired ? 'text-rose-600' : 'text-slate-600'}">${expiryStr ? formatDate(expiryStr) : '-'}</td>
             <td class="p-3">${r.weightKg || 0} kg</td>
             <td class="p-3 text-slate-500">${usedKg.toFixed(1)} kg</td>
             <td class="p-3 font-bold text-emerald-600">${remKg.toFixed(1)} kg</td>
@@ -2083,7 +2080,7 @@
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50">
             <td class="p-3 font-mono font-bold text-purple-900">${s.shipNo || ''}</td>
-            <td class="p-3 text-slate-500">${formatDateTime(s.shipDate)}</td>
+            <td class="p-3 text-slate-500">${formatDate(s.shipDate)}</td>
             <td class="p-3 font-semibold text-slate-800">${s.customer || ''}</td>
             <td class="p-3 text-xs text-slate-500">${s.temp || ''}<br>${s.logistics || '-'}</td>
             <td class="p-3 text-xs text-slate-700">${itemsSummary || '-'}</td>
