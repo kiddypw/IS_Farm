@@ -991,8 +991,35 @@
     window.handleGasResponse = function(json) {
       setLoadingUI(false);
       if (json && json.status === "success") {
-        state.fields = json.fields || [];
-        state.rawInbound = json.rawInbound || [];
+        // 正規化 FieldRecords 欄位，相容中英文鍵名
+        state.fields = (json.fields || []).map(f => ({
+          ...f,
+          id: f.id || f["田區/地塊編號"] || f["田區"] || "",
+          vegType: f.vegType || f["蔬菜種類"] || f["品項"] || "",
+          plantDate: f.plantDate || f["種植/播種日期"] || f["種植日"] || "",
+          fertDate: f.fertDate || f["追肥日"] || "",
+          pest1Date: f.pest1Date || f["用藥一"] || f["用藥1"] || "",
+          pest2Date: f.pest2Date || f["用藥二"] || f["用藥2"] || "",
+          harvest1Date: f.harvest1Date || f["採收一 (預估)"] || f["採收1日期"] || "",
+          harvest1Kg: parseFloat(f.harvest1Kg !== undefined ? f.harvest1Kg : (f["第 1 次實際採收數量 (kg)"] || f["採收1"] || 0)),
+          harvest2Date: f.harvest2Date || f["採收二 (預估)"] || f["採收2日期"] || "",
+          harvest2Kg: parseFloat(f.harvest2Kg !== undefined ? f.harvest2Kg : (f["第 2 次實際採收數量 (kg)"] || f["採收2"] || 0)),
+          expiryDate: f.expiryDate || f["冷藏預估期限"] || f["冷藏期限"] || "",
+          notes: f.notes || f["備註/田間紀錄說明"] || f["備註"] || ""
+        }));
+
+        // 正規化 RawInbound 欄位，確保冷藏預估期限與其他欄位能讀取中文名稱
+        state.rawInbound = (json.rawInbound || []).map(r => ({
+          ...r,
+          rawLotNo: r.rawLotNo || r["原料批號"] || "",
+          vegType: r.vegType || r["蔬菜種類"] || r["品項"] || "",
+          source: r.source || r["田區來源"] || "",
+          inDate: r.inDate || r["入庫日期"] || "",
+          expiryDate: r.expiryDate || r["冷藏預估期限"] || r["冷藏期限"] || "",
+          weightKg: parseFloat(r.weightKg !== undefined ? r.weightKg : (r["入庫毛重/淨重 (kg)"] || r["原始重量"] || r["重量"] || r["入庫重量"] || 0)),
+          storageLoc: r.storageLoc || r["冷藏庫儲位"] || r["儲位"] || ""
+        }));
+
         state.shipping = json.shipping || [];
 
         renderAll();
@@ -1218,27 +1245,35 @@
     function getRawExpiryDate(r) {
       if (!r) return null;
 
-      // 1. 若該原料入庫時已有明確記錄的冷藏期限
-      if (r.expiryDate) return r.expiryDate;
+      // 1. 若該原料入庫時已有明確記錄的冷藏期限 (同時支援中英文屬性名)
+      const directExpiry = r.expiryDate || r["冷藏預估期限"] || r["冷藏期限"];
+      if (directExpiry) return directExpiry;
 
       // 2. 核心邏輯：入庫日期 (inDate) + 該蔬菜專屬冷藏天數
-      if (r.inDate && r.vegType && COLD_STORAGE_DAYS[r.vegType]) {
-        const dStr = String(r.inDate).trim().split(' ')[0];
-        return addDaysToDate(dStr, COLD_STORAGE_DAYS[r.vegType]);
+      const inDate = r.inDate || r["入庫日期"];
+      const vegType = r.vegType || r["品項"] || r["蔬菜種類"];
+      if (inDate && vegType && COLD_STORAGE_DAYS[vegType]) {
+        const dStr = String(inDate).trim().split(' ')[0];
+        return addDaysToDate(dStr, COLD_STORAGE_DAYS[vegType]);
       }
 
       // 3. 對照田間紀錄 (FieldRecords) 備援
       if (state.fields && state.fields.length > 0) {
         const matchedField = state.fields.find(f => {
-          const matchFieldId = f.id ? (r.source && r.source.includes(f.id)) : true;
-          const matchVeg = f.vegType ? (r.vegType === f.vegType) : true;
-          const plantKey = getPlantDateKey(f.plantDate);
-          const matchPlant = plantKey ? (r.source && r.source.includes(plantKey)) : true;
+          const fId = f.id || f["田區/地塊編號"] || f["田區"];
+          const fVeg = f.vegType || f["蔬菜種類"] || f["品項"];
+          const fPlant = f.plantDate || f["種植/播種日期"] || f["種植日"];
+          const rSource = r.source || r["田區來源"] || "";
+
+          const matchFieldId = fId ? rSource.includes(fId) : true;
+          const matchVeg = fVeg ? (vegType === fVeg) : true;
+          const plantKey = getPlantDateKey(fPlant);
+          const matchPlant = plantKey ? rSource.includes(plantKey) : true;
           return matchFieldId && matchVeg && matchPlant;
         });
 
-        if (matchedField && matchedField.expiryDate) {
-          return matchedField.expiryDate;
+        if (matchedField && (matchedField.expiryDate || matchedField["冷藏預估期限"])) {
+          return matchedField.expiryDate || matchedField["冷藏預估期限"];
         }
       }
 
@@ -1274,19 +1309,56 @@
     }
 
     function saveFieldRecord() {
+      const fieldId = document.getElementById("fieldId").value;
+      const vegType = document.getElementById("fieldVegType").value;
+      const plantDate = attachCurrentTime(document.getElementById("fieldPlantDate").value);
+      const fertDate = attachCurrentTime(document.getElementById("fieldFertDate").value);
+      const pest1Date = attachCurrentTime(document.getElementById("fieldPest1Date").value);
+      const pest2Date = attachCurrentTime(document.getElementById("fieldPest2Date").value);
+      const harvest1Date = attachCurrentTime(document.getElementById("fieldHarvest1Date").value);
+      const harvest1Kg = parseFloat(document.getElementById("fieldHarvest1Kg").value) || 0;
+      const harvest2Date = attachCurrentTime(document.getElementById("fieldHarvest2Date").value);
+      const harvest2Kg = parseFloat(document.getElementById("fieldHarvest2Kg").value) || 0;
+      const expiryDate = attachCurrentTime(document.getElementById("fieldExpiryDate").value);
+      const notes = document.getElementById("fieldNotes").value;
+
       const record = {
-        id: document.getElementById("fieldId").value,
-        vegType: document.getElementById("fieldVegType").value,
-        plantDate: attachCurrentTime(document.getElementById("fieldPlantDate").value),
-        fertDate: attachCurrentTime(document.getElementById("fieldFertDate").value),
-        pest1Date: attachCurrentTime(document.getElementById("fieldPest1Date").value),
-        pest2Date: attachCurrentTime(document.getElementById("fieldPest2Date").value),
-        harvest1Date: attachCurrentTime(document.getElementById("fieldHarvest1Date").value),
-        harvest1Kg: parseFloat(document.getElementById("fieldHarvest1Kg").value) || 0,
-        harvest2Date: attachCurrentTime(document.getElementById("fieldHarvest2Date").value),
-        harvest2Kg: parseFloat(document.getElementById("fieldHarvest2Kg").value) || 0,
-        expiryDate: attachCurrentTime(document.getElementById("fieldExpiryDate").value),
-        notes: document.getElementById("fieldNotes").value
+        id: fieldId,
+        vegType: vegType,
+        plantDate: plantDate,
+        fertDate: fertDate,
+        pest1Date: pest1Date,
+        pest2Date: pest2Date,
+        harvest1Date: harvest1Date,
+        harvest1Kg: harvest1Kg,
+        harvest2Date: harvest2Date,
+        harvest2Kg: harvest2Kg,
+        expiryDate: expiryDate,
+        notes: notes,
+        // 中文欄位映射
+        "田區/地塊編號": fieldId,
+        "田區": fieldId,
+        "蔬菜種類": vegType,
+        "品項": vegType,
+        "種植/播種日期": plantDate,
+        "種植日": plantDate,
+        "追肥日": fertDate,
+        "用藥一": pest1Date,
+        "用藥1": pest1Date,
+        "用藥二": pest2Date,
+        "用藥2": pest2Date,
+        "採收一 (預估)": harvest1Date,
+        "採收1日期": harvest1Date,
+        "第 1 次實際採收數量 (kg)": harvest1Kg,
+        "採收1": harvest1Kg,
+        "採收二 (預估)": harvest2Date,
+        "採收2日期": harvest2Date,
+        "第 2 次實際採收數量 (kg)": harvest2Kg,
+        "採收2": harvest2Kg,
+        "冷藏預估期限": expiryDate,
+        "冷藏期限": expiryDate,
+        "備註/田間紀錄說明": notes,
+        "備註": notes
       };
 
       syncDataToGasAndRefresh("FieldRecords", record);
@@ -1338,6 +1410,13 @@
       // 自動依採收日期及蔬菜種類計算冷藏預估期限
       autoFillRawExpiry();
 
+      // 確保冷藏預估期限欄位確實已設定
+      const rawExpInput = document.getElementById("rawExpiryDate");
+      if (rawExpInput && !rawExpInput.value) {
+        const coldDays = COLD_STORAGE_DAYS[field.vegType] || 14;
+        rawExpInput.value = addDaysToDate(formattedDate, coldDays);
+      }
+
       generateNewRawLotNo();
 
       const coldDays = COLD_STORAGE_DAYS[field.vegType] || 14;
@@ -1345,14 +1424,47 @@
     }
 
     function saveRawInbound() {
+      const inDateRaw = document.getElementById("rawInDate").value;
+      const veg = document.getElementById("rawVegType").value;
+      let expDateRaw = document.getElementById("rawExpiryDate").value;
+
+      // 若使用者未點選或預估期限為空，自動推算補齊
+      if (!expDateRaw && inDateRaw) {
+        const coldDays = COLD_STORAGE_DAYS[veg] || 14;
+        expDateRaw = addDaysToDate(inDateRaw, coldDays);
+        document.getElementById("rawExpiryDate").value = expDateRaw;
+      }
+
+      const formattedInDate = attachCurrentTime(inDateRaw);
+      const formattedExpiryDate = attachCurrentTime(expDateRaw);
+      const lotNo = document.getElementById("rawLotNo").value;
+      const source = document.getElementById("rawSource").value;
+      const weight = parseFloat(document.getElementById("rawWeightKg").value) || 0;
+      const loc = document.getElementById("rawStorageLoc").value;
+
       const raw = {
-        rawLotNo: document.getElementById("rawLotNo").value,
-        vegType: document.getElementById("rawVegType").value,
-        source: document.getElementById("rawSource").value,
-        inDate: attachCurrentTime(document.getElementById("rawInDate").value),
-        expiryDate: attachCurrentTime(document.getElementById("rawExpiryDate").value),
-        weightKg: parseFloat(document.getElementById("rawWeightKg").value) || 0,
-        storageLoc: document.getElementById("rawStorageLoc").value
+        // 英文鍵名
+        rawLotNo: lotNo,
+        vegType: veg,
+        source: source,
+        inDate: formattedInDate,
+        expiryDate: formattedExpiryDate,
+        weightKg: weight,
+        storageLoc: loc,
+        // 中文欄位名（確保 Google Apps Script 能直接對應工作表「冷藏預估期限」等欄位）
+        "原料批號": lotNo,
+        "蔬菜種類": veg,
+        "品項": veg,
+        "田區來源": source,
+        "入庫日期": formattedInDate,
+        "冷藏預估期限": formattedExpiryDate,
+        "冷藏期限": formattedExpiryDate,
+        "入庫毛重/淨重 (kg)": weight,
+        "原始重量": weight,
+        "重量": weight,
+        "入庫重量": weight,
+        "冷藏庫儲位": loc,
+        "儲位": loc
       };
 
       syncDataToGasAndRefresh("RawInbound", raw);
