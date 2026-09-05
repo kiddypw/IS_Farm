@@ -1467,9 +1467,9 @@
       shippingItemsState.push({
         rawLotNo: firstRaw ? firstRaw.rawLotNo : "",
         vegType: firstRaw ? firstRaw.vegType : "小白菜",
-        unit: "把",
+        unit: "kg",
         count: 0,
-        unitKg: state.units["把"] || 3.0,
+        unitKg: state.units["kg"] || 1.0,
         calculatedKg: 0
       });
       renderShippingItemsTable();
