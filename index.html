@@ -238,7 +238,7 @@
                 <th class="p-3">入庫日期</th>
                 <th class="p-3">冷藏預估期限</th>
                 <th class="p-3">剩餘公斤數</th>
-                <th class="p-3">已在庫天數</th>
+                <th class="p-3">在庫天數</th>
                 <th class="p-3">狀態預警</th>
                 <th class="p-3">操作</th>
               </tr>
@@ -346,7 +346,7 @@
         </form>
       </div>
 
-      <!-- Field Records Table -->
+      <!-- Field Records Table (Inverted order & Notes sub-row in Expiry column) -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
           <h3 class="font-bold text-slate-800">📋 田間栽培與採收紀錄歷史 (Google 試算表 FieldRecords)</h3>
@@ -361,12 +361,12 @@
                 <th class="p-3">種植日 / 追肥日</th>
                 <th class="p-3">用藥紀錄 (用藥1 / 用藥2)</th>
                 <th class="p-3">採收紀錄 (採收1 / 採收2)</th>
-                <th class="p-3">冷藏期限</th>
+                <th class="p-3">冷藏期限 / 備註說明</th>
                 <th class="p-3">轉入冷藏作業</th>
               </tr>
             </thead>
             <tbody id="fieldRecordsTable" class="divide-y divide-slate-200">
-              <!-- Rendered via JS -->
+              <!-- Rendered via JS in reverse order -->
             </tbody>
           </table>
         </div>
@@ -785,7 +785,7 @@
       "莧菜": 14
     };
 
-    // 蔬菜田間作業日程推理規則表
+    // 蔬菜田間作業日程推理規則表 (採收2 + 冷藏耐放天數)
     const CROP_SCHEDULE_RULES = {
       "小白菜": { fert: 13, pest1: 8, pest2: 15, h1: 25, h2: 32, coldDays: 14, expiry: 46 },
       "油菜":   { fert: 14, pest1: 8, pest2: 15, h1: 25, h2: 32, coldDays: 25, expiry: 57 },
@@ -1889,7 +1889,10 @@
         return;
       }
 
-      state.fields.forEach((f, idx) => {
+      // 1. 倒序排列：保留原始陣列索引 idx 供轉入按鈕使用，最新輸入的紀錄顯示於最上方
+      const reversedFields = state.fields.map((f, originalIndex) => ({ f, originalIndex })).reverse();
+
+      reversedFields.forEach(({ f, originalIndex }) => {
         const plantKey = getPlantDateKey(f.plantDate);
 
         const isTransferred1 = f.transferred1 === true || f.transferred1 === "已轉入" || f.transferred1 === "true" ||
@@ -1913,12 +1916,12 @@
           });
 
         const btn1 = isTransferred1 
-          ? `<button type="button" onclick="transferHarvestToInbound(${idx}, 1)" class="text-xs badge-pink px-2.5 py-1 rounded-md font-bold transition shadow-sm w-full text-center" title="點擊可重新載入此資料至採收入庫">已轉入 (採1)</button>`
-          : `<button type="button" onclick="transferHarvestToInbound(${idx}, 1)" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-2.5 py-1 rounded-md font-medium transition w-full text-center">轉入 (採1)</button>`;
+          ? `<button type="button" onclick="transferHarvestToInbound(${originalIndex}, 1)" class="text-xs badge-pink px-2.5 py-1 rounded-md font-bold transition shadow-sm w-full text-center" title="點擊可重新載入此資料至採收入庫">已轉入 (採1)</button>`
+          : `<button type="button" onclick="transferHarvestToInbound(${originalIndex}, 1)" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-2.5 py-1 rounded-md font-medium transition w-full text-center">轉入 (採1)</button>`;
 
         const btn2 = isTransferred2
-          ? `<button type="button" onclick="transferHarvestToInbound(${idx}, 2)" class="text-xs badge-pink px-2.5 py-1 rounded-md font-bold transition shadow-sm w-full text-center" title="點擊可重新載入此資料至採收入庫">已轉入 (採2)</button>`
-          : `<button type="button" onclick="transferHarvestToInbound(${idx}, 2)" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2.5 py-1 rounded-md font-medium transition w-full text-center">轉入 (採2)</button>`;
+          ? `<button type="button" onclick="transferHarvestToInbound(${originalIndex}, 2)" class="text-xs badge-pink px-2.5 py-1 rounded-md font-bold transition shadow-sm w-full text-center" title="點擊可重新載入此資料至採收入庫">已轉入 (採2)</button>`
+          : `<button type="button" onclick="transferHarvestToInbound(${originalIndex}, 2)" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2.5 py-1 rounded-md font-medium transition w-full text-center">轉入 (採2)</button>`;
 
         const plantText = f.plantDate ? `種植: ${formatDate(f.plantDate)}` : `種植: -`;
         const fertText = f.fertDate ? `追肥: ${formatDate(f.fertDate)}` : `追肥: -`;
@@ -1928,6 +1931,9 @@
 
         const harvest1Text = (f.harvest1Kg || f.harvest1Kg === 0) ? `採收1: <span class="font-bold text-slate-800">${f.harvest1Kg} kg</span> <span class="text-xs text-slate-400">(${formatDate(f.harvest1Date)})</span>` : `採收1: -`;
         const harvest2Text = (f.harvest2Kg || f.harvest2Kg === 0) ? `採收2: <span class="font-bold text-slate-800">${f.harvest2Kg} kg</span> <span class="text-xs text-slate-400">(${formatDate(f.harvest2Date)})</span>` : `採收2: -`;
+
+        // 2. 備註顯示於「冷藏期限」第二列
+        const notesText = f.notes ? `<div class="py-0.5 border-t border-slate-100 text-slate-500 truncate max-w-[150px]" title="${f.notes}">備註: ${f.notes}</div>` : `<div class="py-0.5 border-t border-slate-100 text-slate-400">備註: -</div>`;
 
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50">
@@ -1945,7 +1951,10 @@
               <div class="py-0.5">${harvest1Text}</div>
               <div class="py-0.5 border-t border-slate-100 text-slate-500">${harvest2Text}</div>
             </td>
-            <td class="p-3 text-slate-500">${formatDate(f.expiryDate)}</td>
+            <td class="p-3 text-xs text-slate-600">
+              <div class="py-0.5 font-semibold text-slate-700">${formatDate(f.expiryDate)}</div>
+              ${notesText}
+            </td>
             <td class="p-3 space-y-1 min-w-[110px]">
               ${btn1}
               ${btn2}
