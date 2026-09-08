@@ -2080,7 +2080,10 @@
         return;
       }
 
-      state.shipping.forEach(s => {
+      // 倒序排列：最新輸入的出貨單顯示於最上方
+      const reversedShipping = [...state.shipping].reverse();
+
+      reversedShipping.forEach(s => {
         let itemsSummary = s.summaryText || "";
         if (!itemsSummary && s.items && Array.isArray(s.items)) {
           itemsSummary = s.items.map(i => `${i.vegType} (${i.count}${i.unit} = ${i.calculatedKg}kg)`).join("<br>");
