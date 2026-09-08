@@ -843,7 +843,7 @@
       return cleanDateStr(val);
     }
 
-    const FIXED_UNIT_ORDER = ["把", "斤", "kg", "包", "袋", "籃"];
+    const FIXED_UNIT_ORDER = ["kg","把", "斤",  "包", "袋", "籃"];
 
     const DEFAULT_GAS_SHEETS = [
       {
@@ -872,7 +872,7 @@
       gasSheetUrl: activeSheetObj.sheetUrl,
       units: (function() {
         let u = JSON.parse(localStorage.getItem("farm_units") || JSON.stringify({
-          "把": 3.0, "斤": 0.6, "kg": 1.0, "包": 0.3, "袋": 5.0, "籃": 12.0
+          "kg": 1.0,"把": 3.0, "斤": 0.6,  "包": 0.3, "袋": 5.0, "籃": 12.0
         }));
         if (u && u["把"] === 0.25) { 
           u["把"] = 3.0; 
@@ -1467,9 +1467,9 @@
       shippingItemsState.push({
         rawLotNo: firstRaw ? firstRaw.rawLotNo : "",
         vegType: firstRaw ? firstRaw.vegType : "小白菜",
-        unit: "把",
+        unit: "Kg",
         count: 0,
-        unitKg: state.units["把"] || 3.0,
+        unitKg: state.units["Kg"] || 1.0,
         calculatedKg: 0
       });
       renderShippingItemsTable();
